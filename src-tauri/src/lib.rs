@@ -15,6 +15,13 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Tauri command to read a file
+#[tauri::command]
+fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
 /// Tauri command to update talents from Archon.gg
 #[tauri::command]
 async fn update_talents(config_path: String) -> Result<String, String> {
@@ -35,7 +42,8 @@ async fn update_talents(config_path: String) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, update_talents])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![greet, read_file, update_talents])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

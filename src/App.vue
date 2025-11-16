@@ -1,160 +1,380 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 
-const greetMsg = ref("");
-const name = ref("");
+interface Config {
+  characters: Array<{
+    name: string;
+    class: string;
+    specializations: string[];
+  }>;
+  raidDifficulties: string[];
+  raidBosses: string[];
+  dungeons: string[];
+  clearPreviousBuilds: boolean;
+  outputPath: string;
+}
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
+const configPath = ref<string>("");
+const config = ref<Config | null>(null);
+const isUpdating = ref(false);
+const statusMessage = ref("");
+const errorMessage = ref("");
+
+const hasConfig = computed(() => config.value !== null);
+
+async function selectConfigFile() {
+  try {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        {
+          name: "JSON",
+          extensions: ["json"],
+        },
+      ],
+    });
+
+    if (selected && typeof selected === "string") {
+      configPath.value = selected;
+      await loadConfig();
+    }
+  } catch (error) {
+    errorMessage.value = `Failed to select file: ${error}`;
+  }
+}
+
+async function loadConfig() {
+  try {
+    errorMessage.value = "";
+    const content = await invoke<string>("read_file", { path: configPath.value });
+    config.value = JSON.parse(content);
+    statusMessage.value = "Configuration loaded successfully";
+  } catch (error) {
+    errorMessage.value = `Failed to load config: ${error}`;
+    config.value = null;
+  }
+}
+
+async function updateTalents() {
+  if (!configPath.value) {
+    errorMessage.value = "Please select a configuration file first";
+    return;
+  }
+
+  try {
+    isUpdating.value = true;
+    errorMessage.value = "";
+    statusMessage.value = "Fetching talents from Archon.gg...";
+
+    const result = await invoke<string>("update_talents", {
+      configPath: configPath.value,
+    });
+
+    statusMessage.value = result;
+    isUpdating.value = false;
+  } catch (error) {
+    errorMessage.value = `Update failed: ${error}`;
+    statusMessage.value = "";
+    isUpdating.value = false;
+  }
 }
 </script>
 
 <template>
   <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
+    <header>
+      <h1>🎮 Archon Talent Updater</h1>
+      <p class="subtitle">
+        Automatically fetch and update WoW talent builds from Archon.gg
+      </p>
+    </header>
 
-    <div class="row">
-      <a href="https://vite.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
-    </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
+    <section class="config-section">
+      <h2>Configuration</h2>
+      <div class="file-selector">
+        <button @click="selectConfigFile" class="btn-primary">
+          📁 Select settings.json
+        </button>
+        <span v-if="configPath" class="file-path">{{ configPath }}</span>
+      </div>
 
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
+      <div v-if="hasConfig" class="config-display">
+        <h3>Loaded Configuration</h3>
+        <div class="config-grid">
+          <div class="config-item">
+            <strong>Characters:</strong>
+            <ul>
+              <li v-for="char in config!.characters" :key="char.name">
+                {{ char.name }} ({{ char.class }}) -
+                {{ char.specializations.join(", ") }}
+              </li>
+            </ul>
+          </div>
+          <div class="config-item">
+            <strong>Raid Difficulties:</strong>
+            <span>{{ config!.raidDifficulties.join(", ") || "None" }}</span>
+          </div>
+          <div class="config-item">
+            <strong>Raid Bosses:</strong>
+            <span>{{ config!.raidBosses.join(", ") || "None" }}</span>
+          </div>
+          <div class="config-item">
+            <strong>Dungeons:</strong>
+            <span>{{ config!.dungeons.join(", ") || "None" }}</span>
+          </div>
+          <div class="config-item">
+            <strong>Output Path:</strong>
+            <span class="path">{{ config!.outputPath }}</span>
+          </div>
+          <div class="config-item">
+            <strong>Clear Previous Builds:</strong>
+            <span>{{ config!.clearPreviousBuilds ? "Yes" : "No" }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="action-section">
+      <button
+        @click="updateTalents"
+        :disabled="!hasConfig || isUpdating"
+        class="btn-update"
+      >
+        <span v-if="!isUpdating">🚀 Update Talents</span>
+        <span v-else>⏳ Updating...</span>
+      </button>
+    </section>
+
+    <section v-if="statusMessage || errorMessage" class="status-section">
+      <div v-if="statusMessage" class="status-success">
+        ✓ {{ statusMessage }}
+      </div>
+      <div v-if="errorMessage" class="status-error">✗ {{ errorMessage }}</div>
+    </section>
+
+    <footer>
+      <p class="help-text">
+        Need help? Create a
+        <code>settings.json</code> file based on
+        <code>settings.example.json</code>
+      </p>
+    </footer>
   </main>
 </template>
 
 <style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-
-</style>
-<style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
 .container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+header {
   text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
+  margin-bottom: 3rem;
 }
 
 h1 {
-  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #24c8db;
 }
 
-input,
-button {
+.subtitle {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.config-section,
+.action-section,
+.status-section {
+  margin-bottom: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.file-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.file-path {
+  font-size: 0.9rem;
+  color: #666;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.btn-primary,
+.btn-update {
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
   cursor: pointer;
+  transition: all 0.3s;
 }
 
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
+.btn-primary {
+  background-color: #24c8db;
+  color: white;
 }
 
-input,
-button {
-  outline: none;
+.btn-primary:hover {
+  background-color: #1da1b5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(36, 200, 219, 0.3);
 }
 
-#greet-input {
-  margin-right: 5px;
+.btn-update {
+  background-color: #4caf50;
+  color: white;
+  width: 100%;
+  font-size: 1.2rem;
+}
+
+.btn-update:hover:not(:disabled) {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-update:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.config-display {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.config-item strong {
+  color: #333;
+}
+
+.config-item ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.config-item li {
+  margin: 0.25rem 0;
+}
+
+.config-item .path {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #666;
+  word-break: break-all;
+}
+
+.status-section {
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.status-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.status-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #f44336;
+}
+
+footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #ddd;
+}
+
+.help-text {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+code {
+  background: #f5f5f5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
+  h1 {
     color: #24c8db;
   }
 
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
+  h2,
+  h3 {
+    color: #f6f6f6;
   }
-  button:active {
-    background-color: #0f0f0f69;
+
+  .subtitle,
+  .file-path,
+  .help-text {
+    color: #aaa;
+  }
+
+  .config-display {
+    background: #1a1a1a;
+    border-color: #444;
+  }
+
+  .config-item strong {
+    color: #f6f6f6;
+  }
+
+  .config-item .path {
+    color: #aaa;
+  }
+
+  code {
+    background: #333;
+    color: #f6f6f6;
+  }
+
+  footer {
+    border-top-color: #444;
   }
 }
-
 </style>
