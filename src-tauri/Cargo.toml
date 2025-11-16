@@ -23,3 +23,20 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# HTTP client with async support
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+
+# HTML parsing
+scraper = "0.20"
+
+# Date/time handling for Wednesday detection
+chrono = "0.4"
+
+# Lua parsing and formatting
+full_moon = { version = "0.19", features = ["roblox"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
