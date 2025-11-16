@@ -1,0 +1,27 @@
+{
+  "characters": [
+    {
+      "name": "MyWarrior",
+      "class": "Warrior",
+      "specializations": ["arms", "fury"]
+    },
+    {
+      "name": "MyMage",
+      "class": "Mage",
+      "specializations": ["frost", "fire"]
+    }
+  ],
+  "raidDifficulties": ["heroic", "normal"],
+  "raidBosses": [
+    "broodtwister",
+    "sikran",
+    "queen-ansurek"
+  ],
+  "dungeons": [
+    "ara-kara",
+    "city-of-threads",
+    "mists-of-tirna-scithe"
+  ],
+  "clearPreviousBuilds": false,
+  "outputPath": "/Applications/World of Warcraft/_retail_/WTF/Account/YOUR_ACCOUNT_ID/SavedVariables/TalentLoadoutsEx.lua"
+}
