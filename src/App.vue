@@ -334,10 +334,8 @@ async function updateTalents() {
         <!-- Gradient overlay -->
         <div class="absolute inset-0 bg-gradient-to-b from-[#060719]/40 via-[#222972]/30 to-[#41b2f4]/35"></div>
       </div>
-      <div class="relative z-10 text-center">
-        <h1 class="text-8xl md:text-9xl font-bold bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl animate-pulse">
-          Talent Heron
-        </h1>
+      <div class="relative z-10 flex items-center justify-center">
+        <img src="/talent-heron.png" alt="Talent Heron" class="h-32 md:h-48 w-auto drop-shadow-2xl" />
       </div>
     </div>
 
