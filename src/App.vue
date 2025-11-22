@@ -320,8 +320,8 @@ async function updateTalents() {
             style="transform: scale(1.05);"
           />
         </div>
-        <!-- Subtle Gradient Overlay for text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-[#030713]/20 via-transparent to-[#030713]/40"></div>
+        <!-- Gradient Overlay with custom colors -->
+        <div class="absolute inset-0 bg-gradient-to-b from-[#060719]/30 via-[#222972]/20 to-[#41b2f4]/25"></div>
       </div>
 
       <!-- Hero Content -->
