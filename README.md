@@ -194,5 +194,3 @@ This project is for personal use. Archon.gg data is property of Archon.gg.
 - Compatible with [TalentLoadoutsEx](https://www.curseforge.com/wow/addons/talent-loadouts-ex) addon
 
 ---
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
